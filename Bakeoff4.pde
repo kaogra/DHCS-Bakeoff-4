@@ -28,6 +28,7 @@ int countDownTimerWait = 0;
 
 PFont bold, reg;
 boolean correctFlag = false;
+boolean waitForChoose2 = false;
 
 void setup() {
   size(540, 600, P2D); //you can change this to be fullscreen
@@ -95,13 +96,21 @@ void draw() {
 
   if (targets.get(index).action==0)
   {
-    fill(180);
-    rect(width/2,160,width,height/2);
+    if (correctFlag) { 
+      fill(0,255,0);
+    } else {
+      fill(100);
+    }
+    rect(width/2,120,width,height/2);
     fill(255);
     text("UP", width/2, height/2);
   }
   else {
-    fill(180);
+    if (correctFlag) { 
+      fill(0,255,0);
+    } else {
+      fill(100);
+    }
     rect(width/2,160+height/2,width,height/2);
     fill(255);
     text("DOWN", width/2, height/2);
@@ -118,8 +127,10 @@ void draw() {
   
   switch(num) {
   case 0: 
-    fill(0,255,0);
-    textFont(bold);
+    if (!correctFlag) {
+      fill(0,255,0);
+      textFont(bold); 
+    }
     text("OUT",  width/2, 100);
     fill(255);
     textFont(reg);
@@ -128,8 +139,10 @@ void draw() {
     text("RIGHT",  480, height/2);
     break;
   case 1: 
-    fill(0,255,0);
-    textFont(bold);
+    if (!correctFlag) {
+      fill(0,255,0);
+      textFont(bold); 
+    }
     text("IN",  width/2, 580);
     fill(255);
     textFont(reg);
@@ -138,8 +151,10 @@ void draw() {
     text("RIGHT",  480, height/2);
     break;
   case 2:
-    fill(0,255,0);
-    textFont(bold);
+    if (!correctFlag) {
+      fill(0,255,0);
+      textFont(bold); 
+    }
     text("LEFT",  60, height/2);
     fill(255);
     textFont(reg);
@@ -148,8 +163,10 @@ void draw() {
     text("RIGHT",  480, height/2);
     break;
   case 3:
-    fill(0,255,0);
-    textFont(bold);
+    if (!correctFlag) {
+      fill(0,255,0);
+      textFont(bold); 
+    }
     text("RIGHT",  480, height/2);
     fill(255);
     textFont(reg);
@@ -159,6 +176,13 @@ void draw() {
     break;
   }
 
+}
+
+boolean isCorrect(Target t, float x, float y) {
+  return (t.target == 0 && y > 3) ||
+        (t.target == 1 && y < -3) ||
+        (t.target == 2 && x < -3) ||
+        (t.target == 3 && x > 3);
 }
 
 void onAccelerometerEvent(float x, float y, float z)
@@ -180,32 +204,45 @@ void onAccelerometerEvent(float x, float y, float z)
   if (t==null)
     return;
     
-  // if correct initial choose 4 direction, then check for up/down is correct.
-  if (t.target == 0 && y > 4 ||
-      t.target == 1 && y < -4||
-      t.target == 2 && x < -4||
-      t.target == 3 && x > 4) {
-    //Check if correct motion UP/DOWN
-    if (((z-9.8)>4 && t.action==0) || ((z-9.8)<-4 && t.action==1)) {
-        println("Right target, right z direction!");
-        trialIndex++; //next trial!
-    } else {
-        if (trialIndex>0)
-          trialIndex--; //move back one trial as penalty!
-        println("right target, WRONG z direction!");
-    }
-    
-    countDownTimerWait=30; //wait roughly 0.5 sec before allowing next trial
+  print(isCorrect(t,x,y));
   
-  } else if (light<=proxSensorThreshold && countDownTimerWait<0 && hitTest()!=t.target) { 
+  if(isCorrect(t,x,y)) 
+    correctFlag = true;
+ 
+  // if correct initial choose 4 direction, then check for up/down is correct.
+  if (countDownTimerWait < 0 && isCorrect(t,x,y)) {
+    print("Enter first check");
+    correctFlag = true;
+    countDownTimerWait=30; //wait roughly 0.5 sec before allowing next trial
+    waitForChoose2 = true;
+  } else if (!waitForChoose2 && countDownTimerWait < 0 && 
+        (((t.target == 0 || t.target ==1) && abs(y) > 3) ||
+        ((t.target == 2 || t.target == 3) && abs(x) > 3))) { 
     println("wrong round 1 action!"); 
 
     if (trialIndex>0)
       trialIndex--; //move back one trial as penalty!
-
+    correctFlag = false;
     countDownTimerWait=30; //wait roughly 0.5 sec before allowing next trial
+  } 
+  
+  //Check if correct motion UP/DOWN
+  print("ZZZ:  " + correctFlag);
+  if (countDownTimerWait < 0 && correctFlag) {
+    print("Enter z!!!");
+    if (((z-9.8)>4 && t.action==0) || ((z-9.8)<-4 && t.action==1)) {
+      println("Right target, right z direction!");
+      correctFlag = false;
+      countDownTimerWait = 60;
+      trialIndex++; //next trial!
+    } else if (((z-9.8)<-4 && t.action==0) || ((z-9.8)>4 && t.action==1)) {
+      correctFlag = false;
+      println("right target, WRONG z direction!");
+    }
   }
 }
+
+
 
  /*
   if (light<=proxSensorThreshold && abs(z-9.8)>4 && countDownTimerWait<0) //possible hit event
